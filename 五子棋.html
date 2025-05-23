@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gomoku - Five in a Row</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+            margin: 0;
+            background-image: linear-gradient(45deg, #ff7e5f, #feb47b);
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .title {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        .board {
+            display: grid;
+            grid-template-columns: repeat(15, 40px);
+            grid-template-rows: repeat(15, 40px);
+            gap: 2px;
+            margin-bottom: 20px;
+        }
+        .cell {
+            width: 40px;
+            height: 40px;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        .cell.black {
+            background-color: #000;
+        }
+        .cell.white {
+            background-color: #fff;
+            border: 1px solid #000;
+        }
+        .message {
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+        .buttons {
+            display: flex;
+            gap: 10px;
+        }
+        .reset-button, .undo-button, .surrender-button, .start-button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .reset-button:hover, .undo-button:hover, .surrender-button:hover, .start-button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="title">五子棋小游戏</div>
+        <div class="board" id="board"></div>
+        <div class="message" id="message">黑棋先行</div>
+        <div class="buttons">
+            <button class="start-button" id="start-button">开始游戏</button>
+            <button class="reset-button" id="reset-button">重置游戏</button>
+            <button class="undo-button" id="undo-button">悔棋</button>
+            <button class="surrender-button" id="surrender-button">认输</button>
+        </div>
+    </div>
+
+    <script>
+        const boardSize = 15;
+        const board = document.getElementById('board');
+        const message = document.getElementById('message');
+        const startButton = document.getElementById('start-button');
+        const resetButton = document.getElementById('reset-button');
+        const undoButton = document.getElementById('undo-button');
+        const surrenderButton = document.getElementById('surrender-button');
+        let currentPlayer = 'black';
+        let cells = [];
+        let gameBoard = Array.from({ length: boardSize }, () => Array(boardSize).fill(null));
+        let moveHistory = [];
+
+        // Initialize the board
+        for (let i = 0; i < boardSize; i++) {
+            cells[i] = [];
+            for (let j = 0; j < boardSize; j++) {
+                const cell = document.createElement('div');
+                cell.classList.add('cell');
+                cell.dataset.row = i;
+                cell.dataset.col = j;
+                cell.addEventListener('click', handleCellClick);
+                board.appendChild(cell);
+                cells[i][j] = cell;
+            }
+        }
+
+        function handleCellClick(event) {
+            const cell = event.target;
+            const row = parseInt(cell.dataset.row);
+            const col = parseInt(cell.dataset.col);
+
+            if (gameBoard[row][col] !== null) {
+                return;
+            }
+
+            gameBoard[row][col] = currentPlayer;
+            cell.classList.add(currentPlayer);
+            moveHistory.push({ row, col });
+
+            if (checkWinner(row, col)) {
+                alert(`${currentPlayer === 'black' ? '黑棋' : '白棋'}胜利！`);
+                disableBoard();
+            } else {
+                currentPlayer = currentPlayer === 'black' ? 'white' : 'black';
+                message.textContent = `${currentPlayer === 'black' ? '黑棋' : '白棋'}的回合`;
+            }
+        }
+
+        function checkWinner(row, col) {
+            const directions = [
+                { dr: 0, dc: 1 },  // Horizontal
+                { dr: 1, dc: 0 },  // Vertical
+                { dr: 1, dc: 1 },  // Diagonal \
+                { dr: 1, dc: -1 } // Diagonal /
+            ];
+
+            for (const { dr, dc } of directions) {
+                let count = 1;
+
+                // Check in the positive direction
+                for (let i = 1; i < boardSize; i++) {
+                    const r = row + dr * i;
+                    const c = col + dc * i;
+                    if (r >= 0 && r < boardSize && c >= 0 && c < boardSize && gameBoard[r][c] === currentPlayer) {
+                        count++;
+                    } else {
+                        break;
+                    }
+                }
+
+                // Check in the negative direction
+                for (let i = 1; i < boardSize; i++) {
+                    const r = row - dr * i;
+                    const c = col - dc * i;
+                    if (r >= 0 && r < boardSize && c >= 0 && c < boardSize && gameBoard[r][c] === currentPlayer) {
+                        count++;
+                    } else {
+                        break;
+                    }
+                }
+
+                if (count >= 5) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        function disableBoard() {
+            for (let i = 0; i < boardSize; i++) {
+                for (let j = 0; j < boardSize; j++) {
+                    cells[i][j].removeEventListener('click', handleCellClick);
+                }
+            }
+        }
+
+        resetButton.addEventListener('click', () => {
+            gameBoard = Array.from({ length: boardSize }, () => Array(boardSize).fill(null));
+            moveHistory = [];
+            for (let i = 0; i < boardSize; i++) {
+                for (let j = 0; j < boardSize; j++) {
+                    cells[i][j].classList.remove('black', 'white');
+                    cells[i][j].addEventListener('click', handleCellClick);
+                }
+            }
+            currentPlayer = 'black';
+            message.textContent = '黑棋先行';
+        });
+
+        undoButton.addEventListener('click', () => {
+            if (moveHistory.length === 0) {
+                alert('没有可悔的棋步！');
+                return;
+            }
+
+            const lastMove = moveHistory.pop();
+            const { row, col } = lastMove;
+            gameBoard[row][col] = null;
+            cells[row][col].classList.remove('black', 'white');
+
+            if (currentPlayer === 'black') {
+                message.textContent = '白棋的回合';
+            } else {
+                message.textContent = '黑棋的回合';
+            }
+            currentPlayer = currentPlayer === 'black' ? 'white' : 'black';
+        });
+
+        surrenderButton.addEventListener('click', () => {
+            const opponent = currentPlayer === 'black' ? '白棋' : '黑棋';
+            alert(`${opponent}胜利！`);
+            disableBoard();
+        });
+
+        startButton.addEventListener('click', () => {
+            resetButton.click();
+        });
+    </script>
+</body>
+</html>
